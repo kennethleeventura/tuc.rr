@@ -28,9 +28,9 @@ services:
     env: node
     plan: starter
     region: oregon
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    healthCheckPath: /health
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
     envVars:
       # Server Configuration
       - key: NODE_ENV
@@ -116,7 +116,7 @@ services:
 
     # Auto-scaling configuration
     autoDeploy: true
-    branch: main
+    branch: master
     
     # Resource allocation
     numInstances: 1
@@ -188,7 +188,7 @@ headers:
         value: "camera=(), microphone=(), location=(), payment=(self \"https://js.stripe.com\")"
 
 # Health checks
-healthCheckPath: /health
+healthCheckPath: /api/health
 healthCheckTimeout: 30
 healthCheckInterval: 30
 
