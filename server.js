@@ -350,13 +350,24 @@ const validateSubscription = async (req, res, next) => {
   }
 };
 
-// Health check endpoint
+// Health check endpoints
 app.get('/health', (req, res) => {
   res.json({
     status: 'operational',
     message: '*muttering* System is running... for now...',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
+  });
+});
+
+// API health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'operational',
+    message: '*sigh* The API is working... surprisingly...',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    database: 'connected'
   });
 });
 
