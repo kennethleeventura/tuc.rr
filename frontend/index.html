@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUC.rr - The Unhappy Customer Reviews Retriever</title>
+    <meta name="description" content="Get pessimistically helpful review analysis from TUC, your favorite unhappy customer bot. Analyze products, businesses, airlines, and vacation spots with our unique frown rating system.">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' js.stripe.com *.stripe.com; style-src 'self' 'unsafe-inline'; connect-src 'self' api.theunhappycustomer.com *.stripe.com; img-src 'self' data: https:;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    
+    <!-- OpenGraph and Social Media -->
+    <meta property="og:title" content="TUC.rr - The Unhappy Customer Reviews Retriever">
+    <meta property="og:description" content="Pessimistically helpful review analysis with our signature frown rating system">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://theunhappycustomer.com">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-content">
+            <div class="nav-logo">
+                <h1>TUC.rr</h1>
+                <span class="nav-tagline">The Unhappy Customer Reviews Retriever</span>
+            </div>
+            <div class="nav-buttons">
+                <button id="loginBtn" class="btn-secondary">Login</button>
+                <button id="signupBtn" class="btn-primary">Sign Up</button>
+                <button id="accountBtn" class="btn-secondary" style="display: none;">My Account</button>
+                <button id="logoutBtn" class="btn-secondary" style="display: none;">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <h2 class="hero-title">
+                    <i class="fas fa-frown"></i>
+                    Finally, Reviews from Someone Who Gets It
+                </h2>
+                <p class="hero-description">
+                    <em>*sigh*</em> Welcome to TUC.rr, where I analyze reviews with the pessimistic precision you deserve. 
+                    Get real analysis using our signature "frown rating" system, because why pretend everything is wonderful?
+                </p>
+                <div class="hero-features">
+                    <div class="feature-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Frown Rating System</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-search"></i>
+                        <span>Multi-Source Analysis</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-brain"></i>
+                        <span>AI-Powered Insights</span>
+                    </div>
+                </div>
+                <button id="tryFreeBtn" class="btn-primary btn-large">
+                    Try Free Analysis <span class="btn-subtext">(5 free queries)</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Analysis Section -->
+        <section id="analysisSection" class="analysis-section" style="display: none;">
+            <div class="analysis-container">
+                <h3 class="analysis-title">
+                    <i class="fas fa-search"></i>
+                    What disappointment shall we analyze today?
+                </h3>
+                
+                <form id="analysisForm" class="analysis-form">
+                    <div class="form-group">
+                        <label for="queryInput">Search Query:</label>
+                        <input 
+                            type="text" 
+                            id="queryInput" 
+                            placeholder="e.g., iPhone 15, Joe's Pizza NYC, Southwest Airlines..."
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="categorySelect">Category:</label>
+                        <select id="categorySelect" required>
+                            <option value="">Select category...</option>
+                            <option value="product">Product</option>
+                            <option value="business">Business/Restaurant</option>
+                            <option value="airline">Airline</option>
+                            <option value="vacation">Vacation Spot</option>
+                            <option value="car">Car/Vehicle</option>
+                            <option value="website">Website/App</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="analyzeBtn">
+                        <i class="fas fa-magic"></i>
+                        Analyze Reviews
+                    </button>
+                </form>
+
+                <!-- Usage Display -->
+                <div id="usageDisplay" class="usage-display">
+                    <div class="usage-info">
+                        <span id="usageText">Queries remaining: --</span>
+                        <button id="upgradeBtn" class="btn-upgrade" style="display: none;">Upgrade</button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="loading-state" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p><em>*muttering*</em> Analyzing reviews... preparing your disappointment...</p>
+                </div>
+
+                <!-- Results Container -->
+                <div id="resultsContainer" class="results-container" style="display: none;">
+                    <!-- Results will be dynamically inserted here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section id="pricingSection" class="pricing-section">
+            <div class="pricing-container">
+                <h3 class="pricing-title">
+                    <i class="fas fa-tags"></i>
+                    Subscription Plans
+                    <span class="pricing-subtitle"><em>*resigned*</em> Choose your level of disappointment...</span>
+                </h3>
+                
+                <div class="pricing-grid">
+                    <!-- Free Plan -->
+                    <div class="pricing-card">
+                        <div class="pricing-header">
+                            <h4>Free Trial</h4>
+                            <div class="pricing-price">$0<span>/month</span></div>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> 5 queries per month</li>
+                            <li><i class="fas fa-check"></i> Basic frown ratings</li>
+                            <li><i class="fas fa-check"></i> TUC's pessimistic commentary</li>
+                            <li><i class="fas fa-times"></i> No comparison tools</li>
+                            <li><i class="fas fa-times"></i> No export features</li>
+                        </ul>
+                        <button class="btn-secondary btn-pricing" data-plan="free">Current Plan</button>
+                    </div>
+
+                    <!-- Professional Plan -->
+                    <div class="pricing-card pricing-featured">
+                        <div class="pricing-badge">Most Popular</div>
+                        <div class="pricing-header">
+                            <h4>Professional</h4>
+                            <div class="pricing-price">$9.99<span>/month</span></div>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> 100 queries per month</li>
+                            <li><i class="fas fa-check"></i> Advanced frown analysis</li>
+                            <li><i class="fas fa-check"></i> Comparison tools</li>
+                            <li><i class="fas fa-check"></i> Export reports</li>
+                            <li><i class="fas fa-check"></i> Priority support</li>
+                        </ul>
+                        <button class="btn-primary btn-pricing" data-plan="professional">Upgrade Now</button>
+                    </div>
+
+                    <!-- Enterprise Plan -->
+                    <div class="pricing-card">
+                        <div class="pricing-header">
+                            <h4>Enterprise</h4>
+                            <div class="pricing-price">$49.99<span>/month</span></div>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> 1000 queries per month</li>
+                            <li><i class="fas fa-check"></i> API access</li>
+                            <li><i class="fas fa-check"></i> Bulk analysis tools</li>
+                            <li><i class="fas fa-check"></i> Custom integrations</li>
+                            <li><i class="fas fa-check"></i> Dedicated support</li>
+                        </ul>
+                        <button class="btn-primary btn-pricing" data-plan="enterprise">Go Enterprise</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form">
+                <h3><i class="fas fa-sign-in-alt"></i> Login</h3>
+                <p class="auth-subtitle"><em>*skeptical*</em> Back for more disappointment?</p>
+                
+                <form id="loginFormElement">
+                    <div class="form-group">
+                        <label for="loginEmail">Email:</label>
+                        <input type="email" id="loginEmail" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="loginPassword">Password:</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Login</button>
+                </form>
+                
+                <p class="auth-switch">
+                    Don't have an account? 
+                    <a href="#" id="showSignup">Sign up here</a>
+                </p>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signupForm" class="auth-form" style="display: none;">
+                <h3><i class="fas fa-user-plus"></i> Sign Up</h3>
+                <p class="auth-subtitle"><em>*resigned*</em> Fine, let's get you registered...</p>
+                
+                <form id="signupFormElement">
+                    <div class="form-group">
+                        <label for="signupEmail">Email:</label>
+                        <input type="email" id="signupEmail" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="signupPassword">Password:</label>
+                        <input type="password" id="signupPassword" required minlength="8">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm Password:</label>
+                        <input type="password" id="confirmPassword" required>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="termsAccepted" required>
+                        <label for="termsAccepted">
+                            I accept the <a href="/terms" target="_blank">Terms of Service</a>
+                        </label>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="privacyConsent" required>
+                        <label for="privacyConsent">
+                            I consent to the <a href="/privacy" target="_blank">Privacy Policy</a>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Sign Up</button>
+                </form>
+                
+                <p class="auth-switch">
+                    Already have an account? 
+                    <a href="#" id="showLogin">Login here</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>TUC.rr</h4>
+                <p><em>*muttering*</em> The Reviews Retriever you probably don't deserve...</p>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                    <li><a href="/terms">Terms of Service</a></li>
+                    <li><a href="/gdpr">GDPR Compliance</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="mailto:support@theunhappycustomer.com">Contact Support</a></li>
+                    <li><a href="/help">Help Documentation</a></li>
+                    <li><a href="/api">API Documentation</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Company</h4>
+                <p>© 2025 2882 LLC<br>All rights reserved</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>

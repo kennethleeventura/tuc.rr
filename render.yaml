@@ -1,0 +1,208 @@
+# TUC.rr Reviews Retriever - Render Deployment Configuration
+# Copyright 2025 - 2882 LLC
+
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: tuc-rr-database
+    env: docker
+    plan: starter
+    region: oregon
+    buildCommand: echo "Database service"
+    startCommand: echo "Database running"
+    envVars:
+      - key: POSTGRES_DB
+        value: tuc_reviews
+      - key: POSTGRES_USER
+        value: tuc_user
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+    disk:
+      name: tuc-rr-db-disk
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 10
+
+  # Main API Service
+  - type: web
+    name: tuc-rr-api
+    env: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      # Server Configuration
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DOMAIN
+        value: https://theunhappycustomer.com
+
+      # Database Configuration
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tuc-rr-database
+          property: connectionString
+
+      # OpenAI Configuration
+      - key: OPENAI_API_KEY
+        sync: false
+        
+      # Stripe Configuration (2882 LLC)
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PROFESSIONAL
+        sync: false
+      - key: STRIPE_PRICE_ENTERPRISE
+        sync: false
+
+      # JWT Configuration
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Email Configuration
+      - key: EMAIL_SERVICE
+        value: sendgrid
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        value: noreply@theunhappycustomer.com
+      - key: SUPPORT_EMAIL
+        value: support@theunhappycustomer.com
+
+      # Frontend URLs
+      - key: FRONTEND_URL
+        value: https://theunhappycustomer.com
+      - key: APP_URL
+        value: https://app.theunhappycustomer.com
+
+      # Rate Limiting
+      - key: RATE_LIMIT_WINDOW
+        value: 15
+      - key: RATE_LIMIT_MAX
+        value: 100
+      - key: API_RATE_LIMIT_WINDOW
+        value: 60
+      - key: API_RATE_LIMIT_MAX
+        value: 50
+
+      # Security
+      - key: BCRYPT_ROUNDS
+        value: 12
+      - key: SESSION_TIMEOUT
+        value: 7d
+
+      # Legal Compliance
+      - key: COMPANY_NAME
+        value: 2882 LLC
+      - key: PRIVACY_POLICY_VERSION
+        value: "1.0"
+      - key: TERMS_OF_SERVICE_VERSION
+        value: "1.0"
+      - key: GDPR_DELETION_DAYS
+        value: 30
+
+      # Monitoring
+      - key: LOG_LEVEL
+        value: info
+      - key: ENABLE_ANALYTICS
+        value: true
+
+    # Auto-scaling configuration
+    autoDeploy: true
+    branch: main
+    
+    # Resource allocation
+    numInstances: 1
+    
+    # Custom domains
+    domains:
+      - api.theunhappycustomer.com
+
+  # Background Worker Service
+  - type: worker
+    name: tuc-rr-worker
+    env: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install
+    startCommand: node workers/cleanup-worker.js
+    envVars:
+      # Database Configuration
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tuc-rr-database
+          property: connectionString
+      
+      # Worker Configuration
+      - key: WORKER_TYPE
+        value: cleanup
+      - key: CLEANUP_INTERVAL
+        value: "0 2 * * *"  # Daily at 2 AM
+      
+      # Legal Compliance
+      - key: GDPR_DELETION_DAYS
+        value: 30
+      - key: LOG_LEVEL
+        value: info
+
+# Build configuration
+buildCommand: |
+  echo "Starting TUC.rr build process..."
+  npm ci --only=production
+  echo "Dependencies installed successfully"
+  echo "Build completed for TUC.rr API"
+
+# Environment-specific settings
+environments:
+  production:
+    buildCommand: npm ci --only=production && npm run migrate
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+# Custom headers for security
+headers:
+  # Security headers
+  - source: "/(.*)"
+    headers:
+      - key: "X-Frame-Options"
+        value: "DENY"
+      - key: "X-Content-Type-Options"
+        value: "nosniff"
+      - key: "X-XSS-Protection"
+        value: "1; mode=block"
+      - key: "Strict-Transport-Security"
+        value: "max-age=31536000; includeSubDomains"
+      - key: "Content-Security-Policy"
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline' js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' *.stripe.com api.openai.com"
+      - key: "Referrer-Policy"
+        value: "strict-origin-when-cross-origin"
+      - key: "Permissions-Policy"
+        value: "camera=(), microphone=(), location=(), payment=(self \"https://js.stripe.com\")"
+
+# Health checks
+healthCheckPath: /health
+healthCheckTimeout: 30
+healthCheckInterval: 30
+
+# Scaling configuration
+scaling:
+  minInstances: 1
+  maxInstances: 5
+  targetCPU: 70
+  targetMemory: 80
+
+# Database migration setup
+preDeployCommand: |
+  echo "Running pre-deployment checks..."
+  node scripts/check-database.js
+  echo "Applying database migrations..."
+  node scripts/migrate.js
+  echo "Pre-deployment completed successfully"
