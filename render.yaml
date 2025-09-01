@@ -25,6 +25,7 @@ services:
   # Main API Service
   - type: web
     name: tuc-rr-api
+    rootDir: .
     env: node
     plan: starter
     region: oregon
