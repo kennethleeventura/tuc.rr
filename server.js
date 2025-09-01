@@ -248,10 +248,21 @@ app.use(cors({
   origin: [
     'https://theunhappycustomer.com',
     'https://www.theunhappycustomer.com',
+    'https://tuc.theunhappycustomer.com',
     'http://localhost:3000',
     'http://localhost:3001'
   ],
   credentials: true
+}));
+
+// Static file serving for frontend
+app.use(express.static('frontend', {
+  index: 'index.html',
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
 }));
 
 // Rate limiting
