@@ -2,27 +2,41 @@
 /* Copyright 2025 - 2882 LLC */
 
 :root {
-    /* TUC Brand Color Palette - Authentic Brand Colors */
-    --primary-color: #FAD41A;        /* TUC Brand Yellow */
-    --secondary-color: #182226;      /* TUC Dark Gray */
-    --accent-color: #A13640;         /* TUC Coral */
-    --teal-color: #145064;           /* TUC Deep Teal */
-    --light-blue: #90C1C6;          /* TUC Light Blue */
-    --success-color: #145064;        /* Teal for success */
-    --warning-color: #FAD41A;        /* Brand yellow for warnings */
-    --frown-color: #A13640;          /* Coral for frowns */
+    /* TUC Authentic Brand Colors - From Brand Guide */
+    --tuc-yellow: #FAD41A;           /* Primary brand yellow */
+    --tuc-dark: #182226;             /* Primary dark gray */
+    --tuc-coral: #A13640;            /* Accent coral red */
+    --tuc-teal: #145064;             /* Deep teal blue */
+    --tuc-light-blue: #90C1C6;      /* Light blue accent */
     
-    /* Backgrounds */
-    --bg-primary: #ecf0f1;           /* Light gray */
-    --bg-secondary: #bdc3c7;         /* Darker gray */
-    --bg-card: #ffffff;              /* White cards */
-    --bg-modal: rgba(0, 0, 0, 0.8);  /* Modal overlay */
+    /* Usage Colors */
+    --primary-color: var(--tuc-yellow);
+    --secondary-color: var(--tuc-dark);
+    --accent-color: var(--tuc-coral);
+    --success-color: var(--tuc-teal);
+    --warning-color: var(--tuc-coral);
+    --frown-color: var(--tuc-coral);
     
-    /* Text Colors */
-    --text-primary: #2c3e50;         /* Primary text */
-    --text-secondary: #7f8c8d;       /* Secondary text */
-    --text-muted: #95a5a6;           /* Muted text */
-    --text-white: #ffffff;           /* White text */
+    /* Secondary Palette - Gold/Orange Gradient */
+    --tuc-gold-light: #D4AF37;
+    --tuc-gold-medium: #B8860B;
+    --tuc-orange: #CD853F;
+    
+    /* TUC Brand Backgrounds */
+    --bg-primary: #FEFEF9;           /* Warm off-white */
+    --bg-secondary: var(--tuc-yellow);/* TUC yellow sections */
+    --bg-dark: var(--tuc-dark);      /* Dark sections */
+    --bg-card: #FFFFFF;              /* White cards */
+    --bg-modal: rgba(24, 34, 38, 0.9);/* TUC dark modal */
+    --bg-accent: rgba(250, 212, 26, 0.1);/* Light yellow tint */
+    
+    /* TUC Text Colors */
+    --text-primary: var(--tuc-dark); /* Dark gray text */
+    --text-secondary: #5A6B73;       /* Lighter gray */
+    --text-muted: #8E9CA4;           /* Muted gray */
+    --text-white: #FFFFFF;           /* Pure white */
+    --text-yellow: var(--tuc-yellow);/* Yellow text */
+    --text-coral: var(--tuc-coral);  /* Coral accent text */
     
     /* Spacing and Layout */
     --container-max-width: 1200px;
@@ -55,11 +69,11 @@
 }
 
 body {
-    font-family: var(--font-family);
+    font-family: var(--font-body);
     font-size: var(--font-size-base);
     line-height: 1.6;
     color: var(--text-primary);
-    background-color: var(--bg-primary);
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-accent) 50%, var(--bg-primary) 100%);
     min-height: 100vh;
 }
 

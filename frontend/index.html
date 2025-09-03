@@ -59,6 +59,7 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="tuc-branding.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- Stripe.js -->
@@ -113,16 +114,19 @@
     </script>
 </head>
 <body>
-    <!-- Navigation -->
+    <!-- TUC Navigation with Branding -->
     <nav class="nav-container">
         <div class="nav-content">
             <div class="nav-logo">
-                <h1>TUC.rr</h1>
-                <span class="nav-tagline">The Unhappy Customer Reviews Retriever</span>
+                <img src="assets/images/logos/tuc-logo-main.png" alt="TUC Logo" class="nav-logo-img">
+                <div class="nav-brand-text">
+                    <h1>TUC.rr</h1>
+                    <span class="nav-tagline">Reviews Retriever</span>
+                </div>
             </div>
             <div class="nav-buttons">
-                <button id="loginBtn" class="btn-secondary">Login</button>
-                <button id="signupBtn" class="btn-primary">Sign Up</button>
+                <button id="loginBtn" class="btn-secondary">Sign In</button>
+                <button id="signupBtn" class="btn-primary">Get Started Free</button>
                 <button id="accountBtn" class="btn-secondary" style="display: none;">My Account</button>
                 <button id="logoutBtn" class="btn-secondary" style="display: none;">Logout</button>
             </div>
@@ -360,32 +364,43 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer">
+    <!-- TUC Footer with Authentic Branding -->
+    <footer class="footer footer-container">
         <div class="footer-content">
-            <div class="footer-section">
-                <h4>TUC.rr</h4>
-                <p><em>*muttering*</em> The Reviews Retriever you probably don't deserve...</p>
+            <div class="footer-section footer-brand">
+                <img src="assets/images/logos/tuc-logo-main.png" alt="TUC Logo" class="footer-logo">
+                <h4 class="tuc-yellow-text">TUC.rr</h4>
+                <p class="footer-tagline"><em>*muttering*</em> Finally, Reviews from Someone Who Gets It</p>
+                <div class="footer-signature">
+                    <img src="assets/images/branding/tuc-signature-main.png" alt="TUC Signature" style="max-width: 180px; opacity: 0.7; margin-top: 1rem;">
+                </div>
             </div>
             <div class="footer-section">
-                <h4>Legal</h4>
+                <h4 class="tuc-coral-text">Legal</h4>
                 <ul>
                     <li><a href="/privacy">Privacy Policy</a></li>
                     <li><a href="/terms">Terms of Service</a></li>
                     <li><a href="/gdpr">GDPR Compliance</a></li>
+                    <li><a href="/security">Security</a></li>
                 </ul>
             </div>
             <div class="footer-section">
-                <h4>Support</h4>
+                <h4 class="tuc-coral-text">Support</h4>
                 <ul>
                     <li><a href="mailto:support@theunhappycustomer.com">Contact Support</a></li>
                     <li><a href="/help">Help Documentation</a></li>
                     <li><a href="/api">API Documentation</a></li>
+                    <li><a href="/status">System Status</a></li>
                 </ul>
             </div>
             <div class="footer-section">
-                <h4>Company</h4>
-                <p>© 2025 2882 LLC<br>All rights reserved</p>
+                <h4 class="tuc-coral-text">Company</h4>
+                <p class="tuc-light-blue" style="color: var(--tuc-light-blue);">© 2025 2882 LLC<br>All rights reserved<br><small>The Unhappy Customer Reviews Retriever</small></p>
+                <div class="social-links" style="margin-top: 1rem;">
+                    <a href="#" class="social-link tuc-yellow-text"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="social-link tuc-yellow-text"><i class="fab fa-linkedin"></i></a>
+                    <a href="#" class="social-link tuc-yellow-text"><i class="fab fa-github"></i></a>
+                </div>
             </div>
         </div>
     </footer>
