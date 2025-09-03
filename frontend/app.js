@@ -5,7 +5,7 @@ class TUCApp {
     constructor() {
         this.API_BASE_URL = window.location.hostname === 'localhost' 
             ? 'http://localhost:3000/api'
-            : 'https://api.theunhappycustomer.com/api';
+            : 'https://tuc.theunhappycustomer.com/api';
         
         this.stripe = Stripe('pk_live_51Q9sHSATKgEupd7URm9MjNLLDV8HJqWXJOWVmCRvhXqYXf7XmhSNqUUFPAKCfUBiSu5YtBs9R7Z6Gz9LlLgDdAT300N4zV9iUH');
         this.currentUser = null;
