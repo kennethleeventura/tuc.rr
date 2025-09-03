@@ -595,14 +595,14 @@ app.post('/api/subscription/create-checkout', authenticateToken, async (req, res
     const { userId, email } = req.user;
     
     const priceMap = {
-      'professional': 'price_professional_monthly', // Replace with actual Stripe price IDs
-      'enterprise': 'price_enterprise_monthly'
+      'plus': 'price_plus_monthly_982', // TUC Plus - $9.82/month
+      'max': 'price_max_monthly_1982'   // TUC Max - $19.82/month
     };
     
     if (!priceMap[tier]) {
       return res.status(400).json({
         error: 'invalid_tier',
-        message: '*confused* That\'s not a valid subscription tier. Try professional or enterprise...'
+        message: '*confused* That\'s not a valid subscription tier. Try plus or max...'
       });
     }
     
@@ -691,8 +691,8 @@ async function handleCheckoutCompleted(session) {
     
     // Update subscription
     const queryLimits = {
-      professional: 100,
-      enterprise: 1000
+      plus: 20,    // 20 queries per day
+      max: 999999  // Unlimited queries
     };
     
     await client.query(`

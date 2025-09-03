@@ -2,13 +2,15 @@
 /* Copyright 2025 - 2882 LLC */
 
 :root {
-    /* Color Palette - Pessimistically Professional */
-    --primary-color: #2c3e50;        /* Dark blue-gray */
-    --secondary-color: #7f8c8d;      /* Muted gray */
-    --accent-color: #e74c3c;         /* Disappointed red */
-    --success-color: #27ae60;        /* Reluctant green */
-    --warning-color: #f39c12;        /* Cautious orange */
-    --frown-color: #8e44ad;          /* Purple for frowns */
+    /* TUC Brand Color Palette - Authentic Brand Colors */
+    --primary-color: #FAD41A;        /* TUC Brand Yellow */
+    --secondary-color: #182226;      /* TUC Dark Gray */
+    --accent-color: #A13640;         /* TUC Coral */
+    --teal-color: #145064;           /* TUC Deep Teal */
+    --light-blue: #90C1C6;          /* TUC Light Blue */
+    --success-color: #145064;        /* Teal for success */
+    --warning-color: #FAD41A;        /* Brand yellow for warnings */
+    --frown-color: #A13640;          /* Coral for frowns */
     
     /* Backgrounds */
     --bg-primary: #ecf0f1;           /* Light gray */
@@ -28,8 +30,11 @@
     --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     --transition: all 0.3s ease;
     
-    /* Typography */
-    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Typography - TUC Brand Fonts */
+    --font-primary: 'Futura', 'Century Gothic', 'Avenir', Arial, sans-serif;
+    --font-secondary: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-family: var(--font-body);
     --font-size-base: 16px;
     --font-size-small: 14px;
     --font-size-large: 18px;
