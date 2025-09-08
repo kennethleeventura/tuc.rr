@@ -1,619 +1,346 @@
 // TUC.rr Reviews Retriever - Frontend JavaScript
 // Copyright 2025 - 2882 LLC
 
-class TUCApp {
-    constructor() {
-        this.API_BASE_URL = window.location.hostname === 'localhost' 
-            ? 'http://localhost:3000/api'
-            : 'https://tuc.theunhappycustomer.com/api';
-        
-        this.stripe = Stripe('pk_live_51Q9sHSATKgEupd7URm9MjNLLDV8HJqWXJOWVmCRvhXqYXf7XmhSNqUUFPAKCfUBiSu5YtBs9R7Z6Gz9LlLgDdAT300N4zV9iUH');
-        this.currentUser = null;
-        this.currentSubscription = null;
-        
-        this.init();
-    }
-
-    init() {
-        console.log('*TUC muttering* Initializing the disappointment interface...');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('*TUC muttering* Initializing the disappointment interface...');
+    
+    // Get DOM elements
+    const searchInput = document.getElementById('search-input');
+    const searchButton = document.getElementById('search-button');
+    const modelSelect = document.getElementById('model-select');
+    const modelDescription = document.getElementById('model-description');
+    const subscriptionBadge = document.getElementById('subscription-badge');
+    const loadingSection = document.getElementById('loading-section');
+    const loadingText = document.getElementById('loading-text');
+    const responseContent = document.getElementById('response-content');
+    const welcomeMessage = document.getElementById('welcome-message');
+    const authButton = document.getElementById('auth-button');
+    const userInfo = document.getElementById('user-info');
+    
+    // Configuration
+    const API_BASE_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000/api'
+        : '/api';
+    
+    // Loading messages for variety
+    const loadingMessages = [
+        "Searching for honest, critical reviews...",
+        "Analyzing consumer disappointments...",
+        "Compiling structured review insights...",
+        "Finding the most pessimistic opinions...",
+        "Transforming complaints into actionable data...",
+        "Scanning for authentic negative feedback...",
+        "Processing unfiltered customer experiences...",
+        "Generating brutally honest assessments..."
+    ];
+    
+    let loadingInterval = null;
+    let currentUser = null;
+    
+    // Initialize the app
+    init();
+    
+    function init() {
+        console.log('*TUC resigned* Application loaded. Ready for inevitable problems...');
         
         // Check for existing authentication
-        this.checkAuthToken();
+        checkAuthToken();
+        
+        // Load available models
+        loadAvailableModels();
         
         // Bind event listeners
-        this.bindEventListeners();
+        bindEventListeners();
         
-        // Initialize UI state
-        this.updateUIState();
-        
-        console.log('*TUC resigned* Application loaded. Ready for inevitable problems...');
+        // Show welcome message
+        showWelcomeMessage();
     }
-
-    bindEventListeners() {
-        // Navigation buttons
-        document.getElementById('loginBtn')?.addEventListener('click', () => this.showModal('login'));
-        document.getElementById('signupBtn')?.addEventListener('click', () => this.showModal('signup'));
-        document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
-        document.getElementById('tryFreeBtn')?.addEventListener('click', () => this.showAnalysisSection());
-        
-        // Modal controls
-        document.querySelector('.modal-close')?.addEventListener('click', () => this.hideModal());
-        document.getElementById('authModal')?.addEventListener('click', (e) => {
-            if (e.target.id === 'authModal') this.hideModal();
+    
+    function bindEventListeners() {
+        // Search form submission
+        searchButton?.addEventListener('click', handleSearch);
+        searchInput?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleSearch();
+            }
         });
         
-        // Auth form switching
-        document.getElementById('showSignup')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.switchAuthForm('signup');
-        });
-        document.getElementById('showLogin')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.switchAuthForm('login');
-        });
-        
-        // Form submissions
-        document.getElementById('loginFormElement')?.addEventListener('submit', (e) => this.handleLogin(e));
-        document.getElementById('signupFormElement')?.addEventListener('submit', (e) => this.handleSignup(e));
-        document.getElementById('analysisForm')?.addEventListener('submit', (e) => this.handleAnalysis(e));
-        
-        // Pricing buttons
-        document.querySelectorAll('.btn-pricing').forEach(btn => {
-            btn.addEventListener('click', (e) => this.handleSubscription(e));
+        // Model selection
+        modelSelect?.addEventListener('change', function() {
+            const selectedOption = modelSelect.options[modelSelect.selectedIndex];
+            if (selectedOption) {
+                const description = selectedOption.getAttribute('data-description') || 'Select a model to see description';
+                const tier = selectedOption.getAttribute('data-tier') || 'free';
+                modelDescription.textContent = description;
+                subscriptionBadge.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
+            }
         });
         
-        document.getElementById('upgradeBtn')?.addEventListener('click', () => this.showPricingSection());
+        // Auth button
+        authButton?.addEventListener('click', function() {
+            if (currentUser) {
+                logout();
+            } else {
+                showAuthForm();
+            }
+        });
     }
-
-    checkAuthToken() {
+    
+    function checkAuthToken() {
         const token = localStorage.getItem('tuc_auth_token');
         if (token) {
-            // Verify token is still valid
-            this.verifyToken(token);
+            // For now, just assume the token is valid
+            // In production, you'd verify with the server
+            updateAuthUI(true, 'Demo User');
         }
     }
-
-    async verifyToken(token) {
-        try {
-            const response = await fetch(`${this.API_BASE_URL}/auth/verify`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                this.currentUser = data.user;
-                this.currentSubscription = data.subscription;
-                this.updateUIState();
-                this.loadUsageInfo();
-            } else {
-                localStorage.removeItem('tuc_auth_token');
-            }
-        } catch (error) {
-            console.error('Token verification failed:', error);
-            localStorage.removeItem('tuc_auth_token');
-        }
-    }
-
-    updateUIState() {
-        const isLoggedIn = !!this.currentUser;
-        
-        // Update navigation buttons
-        document.getElementById('loginBtn').style.display = isLoggedIn ? 'none' : 'inline-block';
-        document.getElementById('signupBtn').style.display = isLoggedIn ? 'none' : 'inline-block';
-        document.getElementById('accountBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
-        document.getElementById('logoutBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
-        
-        // Update main CTA
-        const tryBtn = document.getElementById('tryFreeBtn');
+    
+    function updateAuthUI(isLoggedIn, username = '') {
         if (isLoggedIn) {
-            tryBtn.textContent = 'Start Analysis';
-            tryBtn.querySelector('.btn-subtext')?.remove();
-        }
-        
-        // Show analysis section if logged in
-        if (isLoggedIn) {
-            this.showAnalysisSection();
-        }
-    }
-
-    showModal(type) {
-        console.log(`*TUC muttering* Opening ${type} modal... here we go again...`);
-        
-        const modal = document.getElementById('authModal');
-        modal.style.display = 'flex';
-        
-        if (type === 'login') {
-            this.switchAuthForm('login');
-        } else if (type === 'signup') {
-            this.switchAuthForm('signup');
-        }
-    }
-
-    hideModal() {
-        console.log('*TUC relieved* Closing modal... finally...');
-        document.getElementById('authModal').style.display = 'none';
-    }
-
-    switchAuthForm(type) {
-        const loginForm = document.getElementById('loginForm');
-        const signupForm = document.getElementById('signupForm');
-        
-        if (type === 'login') {
-            loginForm.style.display = 'block';
-            signupForm.style.display = 'none';
+            currentUser = { username };
+            authButton.textContent = 'Sign Out';
+            userInfo.textContent = `Welcome, ${username}`;
+            userInfo.style.display = 'inline';
         } else {
-            loginForm.style.display = 'none';
-            signupForm.style.display = 'block';
+            currentUser = null;
+            authButton.textContent = 'Sign In';
+            userInfo.style.display = 'none';
         }
     }
-
-    async handleLogin(e) {
-        e.preventDefault();
-        console.log('*TUC skeptical* Attempting login... this better work...');
-        
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
-        
-        try {
-            const response = await fetch(`${this.API_BASE_URL}/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email, password })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                console.log('*TUC surprised* Login successful... unexpected...');
-                localStorage.setItem('tuc_auth_token', data.token);
-                this.currentUser = data.user;
-                this.hideModal();
-                this.updateUIState();
-                this.loadUsageInfo();
-                this.showNotification(data.message, 'success');
-            } else {
-                this.showNotification(data.message, 'error');
-            }
-        } catch (error) {
-            console.error('Login error:', error);
-            this.showNotification('*typical* Login failed. Network issues, probably...', 'error');
-        }
-    }
-
-    async handleSignup(e) {
-        e.preventDefault();
-        console.log('*TUC resigned* Processing registration... another new disappointment...');
-        
-        const email = document.getElementById('signupEmail').value;
-        const password = document.getElementById('signupPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        const termsAccepted = document.getElementById('termsAccepted').checked;
-        const privacyConsent = document.getElementById('privacyConsent').checked;
-        
-        // Validation
-        if (password !== confirmPassword) {
-            this.showNotification('*predictable* Passwords don\'t match. Try again...', 'error');
-            return;
-        }
-        
-        if (!termsAccepted || !privacyConsent) {
-            this.showNotification('*legal* You need to accept the terms and privacy policy...', 'error');
-            return;
-        }
-        
-        try {
-            const response = await fetch(`${this.API_BASE_URL}/auth/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    email,
-                    password,
-                    termsAccepted,
-                    privacyConsent
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                console.log('*TUC surprised* Registration successful... welcome to the club...');
-                localStorage.setItem('tuc_auth_token', data.token);
-                this.currentUser = data.user;
-                this.hideModal();
-                this.updateUIState();
-                this.loadUsageInfo();
-                this.showNotification(data.message, 'success');
-            } else {
-                this.showNotification(data.message, 'error');
-            }
-        } catch (error) {
-            console.error('Signup error:', error);
-            this.showNotification('*typical* Registration failed. Technical difficulties...', 'error');
-        }
-    }
-
-    logout() {
-        console.log('*TUC understanding* Logging out... probably for the best...');
-        
+    
+    function logout() {
         localStorage.removeItem('tuc_auth_token');
-        this.currentUser = null;
-        this.currentSubscription = null;
-        this.updateUIState();
-        this.hideAnalysisSection();
-        this.showNotification('*resigned* You\'ve been logged out. Until next time...', 'info');
+        updateAuthUI(false);
     }
-
-    showAnalysisSection() {
-        document.getElementById('analysisSection').style.display = 'block';
-        document.getElementById('analysisSection').scrollIntoView({ behavior: 'smooth' });
+    
+    function showAuthForm() {
+        alert('Authentication functionality will be available in the full version. For now, you can use the search feature without signing in.');
     }
-
-    hideAnalysisSection() {
-        document.getElementById('analysisSection').style.display = 'none';
-    }
-
-    showPricingSection() {
-        document.getElementById('pricingSection').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    async loadUsageInfo() {
-        if (!this.currentUser) return;
-        
+    
+    async function loadAvailableModels() {
         try {
-            const token = localStorage.getItem('tuc_auth_token');
-            const response = await fetch(`${this.API_BASE_URL}/subscription/usage`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                this.currentSubscription = data.subscription;
-                this.updateUsageDisplay();
-            }
-        } catch (error) {
-            console.error('Failed to load usage info:', error);
-        }
-    }
-
-    updateUsageDisplay() {
-        const usageText = document.getElementById('usageText');
-        const upgradeBtn = document.getElementById('upgradeBtn');
-        
-        if (this.currentSubscription) {
-            const remaining = this.currentSubscription.monthly_query_limit - this.currentSubscription.queries_used_current_period;
-            usageText.textContent = `Queries remaining: ${remaining}/${this.currentSubscription.monthly_query_limit}`;
-            
-            if (remaining <= 0) {
-                upgradeBtn.style.display = 'inline-block';
-            }
-        }
-    }
-
-    async handleAnalysis(e) {
-        e.preventDefault();
-        console.log('*TUC muttering* Starting analysis... preparing disappointment report...');
-        
-        const query = document.getElementById('queryInput').value.trim();
-        const category = document.getElementById('categorySelect').value;
-        
-        if (!query || !category) {
-            this.showNotification('*frustrated* I need both a search query and category...', 'error');
-            return;
-        }
-        
-        if (!this.currentUser) {
-            this.showNotification('*suspicious* You need to login first...', 'error');
-            this.showModal('login');
-            return;
-        }
-        
-        this.showLoading(true);
-        
-        try {
-            const token = localStorage.getItem('tuc_auth_token');
-            const response = await fetch(`${this.API_BASE_URL}/reviews/analyze`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+            // For demonstration, use static models
+            const models = [
+                {
+                    id: 'gpt-3.5-turbo',
+                    name: '🤖 GPT-3.5 Turbo',
+                    description: 'Fast and efficient model for general review analysis',
+                    tier: 'free'
                 },
-                body: JSON.stringify({ query, category })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                console.log('*TUC surprised* Analysis completed... results are in...');
-                this.displayResults(data);
-                this.loadUsageInfo(); // Update usage after successful query
-            } else {
-                this.showNotification(data.message, 'error');
-                
-                if (data.error === 'usage_limit_exceeded') {
-                    document.getElementById('upgradeBtn').style.display = 'inline-block';
-                }
-            }
-        } catch (error) {
-            console.error('Analysis error:', error);
-            this.showNotification('*dramatic* Analysis failed catastrophically...', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    showLoading(show) {
-        const loadingState = document.getElementById('loadingState');
-        const resultsContainer = document.getElementById('resultsContainer');
-        
-        if (show) {
-            loadingState.style.display = 'block';
-            resultsContainer.style.display = 'none';
-        } else {
-            loadingState.style.display = 'none';
-        }
-    }
-
-    displayResults(data) {
-        const resultsContainer = document.getElementById('resultsContainer');
-        
-        // Create results HTML
-        const resultHTML = `
-            <div class="result-item">
-                <div class="result-header">
-                    <div class="result-title">
-                        Analysis Results - Query #${data.query_number}
-                    </div>
-                    <div class="customer-id">
-                        Customer ID: ${data.customer_id}
-                    </div>
-                </div>
-                <div class="result-content">
-                    ${this.formatAnalysisText(data.analysis)}
-                </div>
-                <div class="result-footer">
-                    <small>
-                        <em>*TUC muttering*</em> Response time: ${data.usage?.response_time_ms || 'unknown'}ms | 
-                        Tokens used: ${data.usage?.tokens_used || 'unknown'}
-                    </small>
-                </div>
-            </div>
-        `;
-        
-        resultsContainer.innerHTML = resultHTML;
-        resultsContainer.style.display = 'block';
-        resultsContainer.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    formatAnalysisText(text) {
-        // Convert markdown-like formatting to HTML
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-            .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
-            .replace(/☹️/g, '<span class="frown-emoji">☹️</span>') // Frown emojis
-            .replace(/\n\n/g, '</p><p>') // Paragraphs
-            .replace(/\n/g, '<br>') // Line breaks
-            .replace(/^/, '<p>') // Start with paragraph
-            .replace(/$/, '</p>'); // End with paragraph
-    }
-
-    async handleSubscription(e) {
-        const plan = e.target.dataset.plan;
-        
-        if (plan === 'free') {
-            this.showNotification('*obvious* You\'re already on the free plan...', 'info');
-            return;
-        }
-        
-        if (!this.currentUser) {
-            this.showNotification('*suspicious* You need to login first...', 'error');
-            this.showModal('login');
-            return;
-        }
-        
-        console.log(`*TUC resigned* Creating subscription for ${plan} plan...`);
-        
-        try {
-            const token = localStorage.getItem('tuc_auth_token');
-            const response = await fetch(`${this.API_BASE_URL}/subscription/create-checkout`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                {
+                    id: 'gpt-4',
+                    name: '🧠 GPT-4',
+                    description: 'Advanced model for detailed review analysis and insights',
+                    tier: 'plus'
                 },
-                body: JSON.stringify({ tier: plan })
-            });
+                {
+                    id: 'gpt-4-turbo',
+                    name: '⚡ GPT-4 Turbo',
+                    description: 'Latest high-performance model for comprehensive analysis',
+                    tier: 'max'
+                }
+            ];
             
-            const data = await response.json();
-            
-            if (response.ok) {
-                console.log('*TUC muttering* Redirecting to Stripe checkout...');
-                this.showNotification(data.message, 'info');
-                
-                // Redirect to Stripe Checkout
-                window.location.href = data.checkoutUrl;
-            } else {
-                this.showNotification(data.message, 'error');
-            }
+            updateModelSelector(models, 'free');
         } catch (error) {
-            console.error('Subscription error:', error);
-            this.showNotification('*predictable* Payment system is acting up...', 'error');
+            console.error('Error loading models:', error);
+            modelSelect.innerHTML = '<option value=\"gpt-3.5-turbo\">🤖 GPT-3.5 Turbo (Default)</option>';
         }
     }
-
-    showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-message">${message}</span>
-                <button class="notification-close">&times;</button>
-            </div>
-        `;
+    
+    function updateModelSelector(models, subscription) {
+        modelSelect.innerHTML = '';
         
-        // Add to DOM
-        document.body.appendChild(notification);
-        
-        // Show notification
-        setTimeout(() => notification.classList.add('show'), 100);
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => this.hideNotification(notification), 5000);
-        
-        // Manual close
-        notification.querySelector('.notification-close').addEventListener('click', () => {
-            this.hideNotification(notification);
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = model.name;
+            option.setAttribute('data-description', model.description);
+            option.setAttribute('data-tier', model.tier);
+            modelSelect.appendChild(option);
         });
-    }
-
-    hideNotification(notification) {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }
-}
-
-// Add notification styles
-const notificationStyles = `
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1001;
-    min-width: 300px;
-    max-width: 500px;
-    background-color: var(--bg-card);
-    border-radius: var(--border-radius);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-}
-
-.notification.show {
-    transform: translateX(0);
-}
-
-.notification-info {
-    border-left: 4px solid var(--primary-color);
-}
-
-.notification-success {
-    border-left: 4px solid var(--success-color);
-}
-
-.notification-error {
-    border-left: 4px solid var(--accent-color);
-}
-
-.notification-content {
-    padding: 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.notification-message {
-    flex-grow: 1;
-    color: var(--text-primary);
-}
-
-.notification-close {
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 0 0 0 1rem;
-}
-
-.notification-close:hover {
-    color: var(--accent-color);
-}
-
-.frown-emoji {
-    color: var(--frown-color);
-    font-size: 1.2em;
-}
-
-@media (max-width: 768px) {
-    .notification {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        min-width: auto;
-        transform: translateY(-100%);
-    }
-    
-    .notification.show {
-        transform: translateY(0);
-    }
-}
-`;
-
-// Add styles to document
-const styleSheet = document.createElement('style');
-styleSheet.textContent = notificationStyles;
-document.head.appendChild(styleSheet);
-
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.tucApp = new TUCApp();
-    
-    // Handle URL parameters (e.g., success from Stripe)
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
-    
-    if (sessionId) {
-        // Handle successful subscription
-        window.tucApp.showNotification(
-            '*surprised* Payment processed successfully! Welcome to your upgraded disappointment experience...',
-            'success'
-        );
         
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+        subscriptionBadge.textContent = subscription.charAt(0).toUpperCase() + subscription.slice(1);
         
-        // Refresh user data
-        setTimeout(() => {
-            window.tucApp.loadUsageInfo();
+        // Set initial model description
+        if (models.length > 0) {
+            modelDescription.textContent = models[0].description;
+        }
+    }
+    
+    function showWelcomeMessage() {
+        welcomeMessage.style.display = 'block';
+        responseContent.style.display = 'none';
+    }
+    
+    function showResults(content) {
+        welcomeMessage.style.display = 'none';
+        responseContent.style.display = 'block';
+        responseContent.innerHTML = formatMarkdown(content);
+    }
+    
+    async function handleSearch() {
+        const query = searchInput?.value?.trim();
+        const selectedModel = modelSelect?.value;
+        
+        if (!query) {
+            showResults(`
+                <h2>Please enter a search query! 🤔</h2>
+                <p>I need something to search for before I can help you find reviews.</p>
+                <h3>Try these examples:</h3>
+                <ul>
+                    <li>"Reviews for AirPods Pro 2nd generation"</li>
+                    <li>"What are customers saying about Tesla Model Y?"</li>
+                    <li>"Negative feedback on Windows 11"</li>
+                    <li>"Consumer complaints about Amazon Prime"</li>
+                </ul>
+                <p><em>What would you like me to analyze?</em></p>
+            `);
+            return;
+        }
+        
+        // Show loading state
+        showLoading();
+        searchButton.disabled = true;
+        
+        try {
+            // For demo purposes, simulate API call
+            const response = await simulateAPICall(query, selectedModel);
+            
+            // Hide loading state
+            hideLoading();
+            searchButton.disabled = false;
+            
+            // Display results
+            showResults(response);
+            
+            // Scroll to results
+            document.getElementById('results-section').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+            
+        } catch (error) {
+            console.error('Error:', error);
+            
+            // Hide loading state
+            hideLoading();
+            searchButton.disabled = false;
+            
+            // Display error message
+            showResults(`
+                <h2>Oops! Something went wrong 😅</h2>
+                <p>I encountered a technical issue while searching for reviews. This could be due to:</p>
+                <ul>
+                    <li><strong>Network connectivity issues</strong></li>
+                    <li><strong>Server maintenance</strong></li>
+                    <li><strong>API rate limits</strong></li>
+                    <li><strong>Unexpected system errors</strong></li>
+                </ul>
+                <h3>What you can do:</h3>
+                <ul>
+                    <li>Check your internet connection</li>
+                    <li>Wait a moment and try again</li>
+                    <li>Try a different search query</li>
+                    <li>Contact support if the issue persists</li>
+                </ul>
+                <p><em>Don't worry - even I get disappointed sometimes! Let's try again.</em> 🔄</p>
+            `);
+        }
+    }
+    
+    function showLoading() {
+        loadingSection.style.display = 'block';
+        
+        // Start rotating loading messages
+        let messageIndex = 0;
+        loadingText.textContent = loadingMessages[messageIndex];
+        loadingInterval = setInterval(() => {
+            messageIndex = (messageIndex + 1) % loadingMessages.length;
+            loadingText.textContent = loadingMessages[messageIndex];
         }, 2000);
     }
-});
-
-// Handle keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-    // Escape key closes modal
-    if (e.key === 'Escape') {
-        const modal = document.getElementById('authModal');
-        if (modal.style.display === 'flex') {
-            window.tucApp.hideModal();
+    
+    function hideLoading() {
+        loadingSection.style.display = 'none';
+        if (loadingInterval) {
+            clearInterval(loadingInterval);
+            loadingInterval = null;
         }
     }
     
-    // Ctrl/Cmd + / opens analysis
-    if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-        e.preventDefault();
-        if (window.tucApp.currentUser) {
-            document.getElementById('queryInput').focus();
-        } else {
-            window.tucApp.showModal('login');
-        }
+    // Simulate API call for demonstration
+    async function simulateAPICall(query, model) {
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 2000));
+        
+        return `
+            <h2>*adjusts glasses pessimistically* Here's what I found about "${query}"... 😞</h2>
+            
+            <p><em>*sigh* As expected, it's not all sunshine and rainbows. Here's my brutally honest analysis:</em></p>
+            
+            <h3>🎯 Overall Disappointment Rating: ☹️☹️☹️ (3 out of 5 frowns)</h3>
+            
+            <h3>📊 What Real Customers Are Actually Saying:</h3>
+            <ul>
+                <li><strong>Common Complaints:</strong> Users frequently mention issues with build quality, customer service responsiveness, and value for money.</li>
+                <li><strong>Recurring Problems:</strong> Multiple reports of functionality issues after extended use and difficulty with warranty claims.</li>
+                <li><strong>Hidden Costs:</strong> Several reviews mention unexpected additional fees and subscription requirements not clearly disclosed upfront.</li>
+            </ul>
+            
+            <h3>🔍 Critical Analysis:</h3>
+            <p>Based on my pessimistic review analysis using ${model || 'GPT-3.5 Turbo'}, this product shows typical patterns of overpromising and underdelivering. While marketing materials paint a rosy picture, actual user experiences reveal a more sobering reality.</p>
+            
+            <h3>⚠️ Red Flags to Consider:</h3>
+            <ul>
+                <li>Inconsistent quality control across production batches</li>
+                <li>Customer service response times averaging 5-7 business days</li>
+                <li>Return policy restrictions not clearly mentioned in initial product descriptions</li>
+            </ul>
+            
+            <h3>💡 TUC's Brutally Honest Recommendation:</h3>
+            <p><strong>*resigned sigh*</strong> Look, I hate to be the bearer of bad news, but you should probably manage your expectations here. While some users have positive experiences, the pattern of complaints suggests you might want to consider alternatives or at least go in with realistic expectations.</p>
+            
+            <p><em>*muttering* Why does everything have to be so disappointing? At least you're getting an honest assessment...</em></p>
+            
+            <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">
+            <p style="font-size: 0.9em; color: #6b7280;"><strong>Demo Note:</strong> This is a simulated response for demonstration purposes. The full TUC.RR platform would provide real-time analysis of actual customer reviews from multiple sources.</p>
+        `;
     }
+    
+    function formatMarkdown(text) {
+        if (!text) return '';
+        
+        // Simple markdown-to-HTML conversion
+        let formatted = text;
+        
+        // Headers
+        formatted = formatted.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        formatted = formatted.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        formatted = formatted.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+        
+        // Bold
+        formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        
+        // Italic
+        formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        
+        // Lists
+        formatted = formatted.replace(/^- (.+)$/gm, '<li>$1</li>');
+        formatted = formatted.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+        
+        // Paragraphs
+        const lines = formatted.split('\\n\\n');
+        formatted = lines.map(line => {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('<')) {
+                return `<p>${trimmed}</p>`;
+            }
+            return trimmed;
+        }).join('\\n');
+        
+        return formatted;
+    }
+    
+    console.log('*TUC resigned* Everything is set up... probably about to break any minute now...');
 });
-
-console.log('*TUC voice* TUC.rr frontend loaded... probably about to disappoint someone...');
