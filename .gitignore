@@ -2,6 +2,7 @@
 
 # Environment variables
 .env
+.env.txt
 .env.local
 .env.production
 .env.development
