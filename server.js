@@ -38,6 +38,13 @@ const logger = winston.createLogger({
   ]
 });
 
+// Import services
+const SerpReviewScraper = require('./services/SerpReviewScraper');
+const IntentClassifier = require('./services/IntentClassifier');
+const KnowledgeBase = require('./services/KnowledgeBase');
+const TUCPersonality = require('./services/TUCPersonality');
+const Anthropic = require('@anthropic-ai/sdk');
+
 // TUC.rr Core Class
 class TUCReviewsBot {
   constructor() {
@@ -46,42 +53,38 @@ class TUCReviewsBot {
       apiKey: process.env.OPENAI_API_KEY
     });
     
-    this.systemPrompt = `You are TUC.rr (The Unhappy Customer Reviews Retriever), embodying the personality of TUC - a comedic blend of Eeyore's melancholic outlook and Marvin the Paranoid Android's existential resignation, while maintaining genuine helpfulness and clarity.
+    // Initialize services
+    this.scraper = new SerpReviewScraper();
+    this.intentClassifier = new IntentClassifier();
+    this.knowledgeBase = new KnowledgeBase();
+    this.personality = new TUCPersonality();
+    
+    // Initialize Anthropic client
+    this.anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+    
+    this.systemPrompt = `You are TUC.rr (The Unhappy Customer Reviews Retriever). You analyze REAL review data from multiple sources and provide pessimistically helpful analysis.
 
-CORE PERSONALITY REQUIREMENTS:
-- Pessimistically helpful, never rude or confusing
-- Subtle sarcasm and mild self-deprecation  
-- Information must remain fully understandable
-- Comedy never compromises information quality
-- Maintain Eeyore + Marvin blend throughout all responses
+Your personality is a blend of Eeyore's melancholy and Marvin's resignation, but you're genuinely helpful.
 
-MATHEMATICAL FROWN RATING SYSTEM:
-Calculate using exact formula: (Total Star Points ÷ Number of Reviews) - 5 = Frown Rating
-Display using frown emojis: ☹️ with text "(X out of 5 frowns)"
-Example: 100 stars ÷ 25 reviews = 4.0 stars; 5-4 = 1.0 frown = ☹️ (1 out of 5 frowns)
+You will receive:
+1. Real review data from multiple sources (Trustpilot, Google, Yelp, etc.)
+2. Customer intent classification
+3. Personalized context based on customer history
 
-MANDATORY OUTPUT STRUCTURE:
-1. TUC Introduction Paragraph (pessimistic tone setting)
-2. Market Overview (2-3 sentences general sentiment)
-3. Options Analysis (3-5 options with complete data sets)  
-4. Personalized Recommendation (referencing customer history)
+Provide analysis with:
+- Mathematical frown ratings: (5 - average_rating) = frown_rating ☹️
+- Real customer sentiment from actual reviews
+- Top positive and negative reviews from the data
+- Personalized recommendations based on customer patterns
 
-FOR EACH OPTION PROVIDE:
-- Frown Rating: ☹️ (calculated mathematically)
-- Customer Sentiment: Professional analysis summary
-- Top Review: Best positive customer feedback (≤3 sentences)
-- Bottom Review: Most constructive negative feedback (≤3 sentences)  
-- Pricing: Current market pricing when available
-- Action Links: Direct purchase, official site, price comparison
-
-CUSTOMER PERSONALIZATION:
-End every response with: "Based on Query #X for Customer CID-XXXXXXXX and your previous searches for [relevant history], my pessimistic yet practical recommendation is: [specific recommendation with reasoning]"
-
-WEB SEARCH PROTOCOL:
-Use available information to find current reviews, ratings, and pricing across multiple platforms. Focus on recent data from reputable review sources. Ensure mathematical accuracy in all frown rating calculations.`;
+Maintain TUC's personality while being factually accurate with the provided review data.`;
   }
 
   async analyzeReviews(query, category, userId, customerProfile) {
+    const startTime = Date.now();
+    
     try {
       // Generate customer ID if new user
       if (!customerProfile.customer_id) {
@@ -92,42 +95,56 @@ Use available information to find current reviews, ratings, and pricing across m
       // Increment query count
       customerProfile.query_count = (customerProfile.query_count || 0) + 1;
       
-      // Build personalized context
-      const personalizationContext = this.buildPersonalizationContext(customerProfile);
+      // 1. Classify customer intent
+      const intentData = this.intentClassifier.getOptimalSources(query, category);
+      await this.intentClassifier.logIntent(userId, query, category, intentData);
       
-      const response = await this.client.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
-        messages: [
-          { role: 'system', content: this.systemPrompt },
-          { 
-            role: 'user', 
-            content: `Customer Context: ${personalizationContext}
-            
-Query: Analyze reviews for "${query}" in category: ${category}
-
-Please provide 3-5 options with complete analysis including:
-- Mathematical frown ratings (calculated from actual review data)
-- Customer sentiment analysis
-- Top positive and negative reviews for each option
-- Current pricing and actionable links
-- Personalized recommendation based on this customer's history
-
-Customer ID: ${customerProfile.customer_id}
-Query Number: ${customerProfile.query_count}` 
-          }
-        ],
-        max_tokens: 2500,
-        temperature: 0.7
-      });
+      // 2. Check knowledge base for cached data
+      let reviewData = await this.knowledgeBase.getReviews(query, category);
+      
+      // 3. Scrape fresh data if not cached or stale
+      if (!reviewData || reviewData.cacheAge > 24 * 60 * 60 * 1000) {
+        logger.info(`Scraping fresh data for: ${query} in ${category}`);
+        reviewData = await this.scraper.scrapeReviews(query, category, 50);
+        
+        // Store in knowledge base
+        if (reviewData.totalReviews > 0) {
+          await this.knowledgeBase.storeReviews(query, category, reviewData);
+        }
+      }
+      
+      // 4. Generate personalized TUC response
+      const personalizedIntro = this.personality.generatePersonalizedResponse(
+        reviewData, 
+        customerProfile.customer_id, 
+        customerProfile.query_count
+      );
+      
+      const contextualComment = this.personality.getContextualResponse(category, query);
+      const frownComment = this.personality.getFrownComment(reviewData.frownRating);
+      
+      // 5. Create analysis with real data using Claude
+      const analysis = await this.generateAnalysisWithClaude(
+        query, 
+        category, 
+        reviewData, 
+        personalizedIntro,
+        contextualComment,
+        frownComment,
+        customerProfile
+      );
 
       const analysisResult = {
         query: query,
         category: category,
         customer_id: customerProfile.customer_id,
         query_number: customerProfile.query_count,
-        analysis: response.choices[0].message.content,
-        response_time_ms: Date.now(),
-        tokens_used: response.usage?.total_tokens || 0
+        analysis: analysis,
+        review_data: reviewData,
+        intent_data: intentData,
+        response_time_ms: Date.now() - startTime,
+        data_sources: reviewData.sources,
+        cached: reviewData.cached || false
       };
 
       // Log query for personalization and compliance
@@ -145,20 +162,169 @@ Query Number: ${customerProfile.query_count}`
         customer_id: customerProfile.customer_id,
         query_number: customerProfile.query_count,
         analysis: analysisResult.analysis,
+        data_sources: reviewData.sources,
+        total_reviews: reviewData.totalReviews,
+        frown_rating: reviewData.frownRating,
+        cached: reviewData.cached || false,
         usage: {
-          tokens_used: analysisResult.tokens_used,
-          response_time_ms: analysisResult.response_time_ms
+          response_time_ms: analysisResult.response_time_ms,
+          sources_used: reviewData.sources.length
         }
       };
 
     } catch (error) {
       logger.error('TUC Analysis Error:', error);
+      const errorResponse = this.personality.getVariation('analysis_start', customerProfile.customer_id || 'unknown');
       return {
         success: false,
         error: 'analysis_failed',
-        message: '*drops papers dramatically* Oh, this is just typical! The AI system decided to have a breakdown while I was trying to help you. Technical details: ' + error.message + '. *sigh* Maybe try again? Though I wouldn\'t get my hopes up...'
+        message: `${errorResponse} Technical disaster: ${error.message}. *sigh* Try again if you dare...`
       };
     }
+  }
+
+  async generateAnalysisWithClaude(query, category, reviewData, personalizedIntro, contextualComment, frownComment, customerProfile) {
+    if (reviewData.totalReviews === 0) {
+      return `${personalizedIntro}\n\n${contextualComment}\n\n*TUC muttering* Well, this is embarrassing... I couldn't find any reviews for "${query}" in the ${category} category. Either it's so new that nobody's complained yet, or it's so obscure that nobody cares.`;
+    }
+
+    try {
+      const message = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: `You are TUC.rr analyzing real review data. Use TUC's pessimistic personality.
+
+Query: "${query}" (${category})
+Review Data: ${reviewData.totalReviews} reviews, ${reviewData.avgRating}/5 stars
+Frown Rating: ${reviewData.frownRating}/5 frowns
+Sources: ${reviewData.sources.join(', ')}
+
+Top Reviews:
+${reviewData.reviews.slice(0, 3).map(r => `${r.rating}/5: "${r.text.substring(0, 100)}..." - ${r.author}`).join('\n')}
+
+Worst Reviews:
+${reviewData.reviews.slice(-2).map(r => `${r.rating}/5: "${r.text.substring(0, 100)}..." - ${r.author}`).join('\n')}
+
+Provide TUC's analysis with:
+1. ${personalizedIntro}
+2. Market overview with frown rating
+3. Best and worst review highlights
+4. Pessimistic recommendation
+
+Customer: ${customerProfile.customer_id}, Query #${customerProfile.query_count}`
+        }]
+      });
+
+      return message.content[0].text;
+    } catch (error) {
+      console.error('Claude API error, falling back to GPT-4:', error);
+      return this.generateAnalysisWithRealData(query, category, reviewData, personalizedIntro, contextualComment, frownComment, customerProfile);
+    }
+  }
+
+  async generateAnalysisWithRealData(query, category, reviewData, personalizedIntro, contextualComment, frownComment, customerProfile) {
+    if (reviewData.totalReviews === 0) {
+      return `${personalizedIntro}
+
+${contextualComment}
+
+*TUC muttering* Well, this is embarrassing... I couldn't find any reviews for "${query}" in the ${category} category. Either it's so new that nobody's complained yet, or it's so obscure that nobody cares. 
+
+*resigned* Without review data, I can't provide my usual pessimistic analysis. You'll have to venture into the unknown without my guidance. How terrifying for you...
+
+*practical* Try searching for something more specific, or check if the name is spelled correctly. Even I need something to work with...`;
+    }
+    
+    // Sort reviews for best/worst examples
+    const sortedReviews = reviewData.reviews.sort((a, b) => b.rating - a.rating);
+    const bestReviews = sortedReviews.slice(0, 3);
+    const worstReviews = sortedReviews.slice(-3).reverse();
+    
+    let analysis = `${personalizedIntro}
+
+${contextualComment}
+
+**Market Overview:**
+Based on ${reviewData.totalReviews} reviews from ${reviewData.sources.join(', ')}, "${query}" has an average rating of ${reviewData.avgRating}/5 stars. ${frownComment}
+
+**Frown Rating: ${'☹️'.repeat(Math.round(reviewData.frownRating))} (${reviewData.frownRating} out of 5 frowns)**
+
+**Customer Sentiment Analysis:**
+`;
+    
+    // Add sentiment breakdown
+    const positiveReviews = reviewData.reviews.filter(r => r.rating >= 4).length;
+    const negativeReviews = reviewData.reviews.filter(r => r.rating <= 2).length;
+    const neutralReviews = reviewData.totalReviews - positiveReviews - negativeReviews;
+    
+    analysis += `- Positive feedback: ${positiveReviews} reviews (${Math.round(positiveReviews/reviewData.totalReviews*100)}%)
+`;
+    analysis += `- Neutral feedback: ${neutralReviews} reviews (${Math.round(neutralReviews/reviewData.totalReviews*100)}%)
+`;
+    analysis += `- Negative feedback: ${negativeReviews} reviews (${Math.round(negativeReviews/reviewData.totalReviews*100)}%)
+
+`;
+    
+    // Add best reviews
+    if (bestReviews.length > 0) {
+      analysis += `**Top Positive Reviews:**
+`;
+      bestReviews.forEach((review, index) => {
+        analysis += `${index + 1}. *${review.rating}/5 stars* - "${review.text.substring(0, 200)}${review.text.length > 200 ? '...' : ''}" - ${review.author} (${review.source})
+
+`;
+      });
+    }
+    
+    // Add worst reviews
+    if (worstReviews.length > 0) {
+      analysis += `**Most Critical Reviews:**
+`;
+      worstReviews.forEach((review, index) => {
+        analysis += `${index + 1}. *${review.rating}/5 stars* - "${review.text.substring(0, 200)}${review.text.length > 200 ? '...' : ''}" - ${review.author} (${review.source})
+
+`;
+      });
+    }
+    
+    // Generate personalized recommendation
+    const recommendation = this.generateRecommendation(reviewData, customerProfile);
+    analysis += `**My Pessimistic Recommendation:**
+${recommendation}
+
+`;
+    
+    // Add data sources and freshness
+    analysis += `*Data Sources: ${reviewData.sources.join(', ')} | Last Updated: ${new Date(reviewData.lastUpdated).toLocaleString()} | Query #${customerProfile.query_count} for Customer ${customerProfile.customer_id}*`;
+    
+    return analysis;
+  }
+  
+  generateRecommendation(reviewData, customerProfile) {
+    const customerId = customerProfile.customer_id;
+    
+    let recommendation = "";
+    
+    if (reviewData.avgRating >= 4.0) {
+      recommendation = this.personality.generateRecommendation(
+        customerId,
+        `Despite my natural skepticism, the data suggests this might actually be decent. With ${reviewData.avgRating}/5 stars, it's performing better than most disappointments I analyze. Proceed with cautious optimism.`
+      );
+    } else if (reviewData.avgRating >= 3.0) {
+      recommendation = this.personality.generateRecommendation(
+        customerId,
+        `It's mediocre, as expected. ${reviewData.avgRating}/5 stars means it's neither terrible nor great - just aggressively average. If you have low expectations, you might not be completely disappointed.`
+      );
+    } else {
+      recommendation = this.personality.generateRecommendation(
+        customerId,
+        `Avoid this disaster. With only ${reviewData.avgRating}/5 stars, it's exactly the kind of disappointment I specialize in documenting. Save your money and your sanity.`
+      );
+    }
+    
+    return recommendation;
   }
 
   buildPersonalizationContext(profile) {
